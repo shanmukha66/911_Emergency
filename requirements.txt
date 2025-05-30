@@ -1,0 +1,12 @@
+altair==5.4.1
+Flask==3.0.3
+folium==0.17.0
+geopy==2.4.1
+matplotlib==3.9.2
+pandas==2.2.3
+Requests==2.32.3
+streamlit==1.39.0
+streamlit_folium==0.23.1
+twilio>=9.6.2
+uagents>=0.22.5
+python-dotenv==1.0.0
