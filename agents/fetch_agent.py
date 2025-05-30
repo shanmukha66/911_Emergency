@@ -2,6 +2,7 @@ from uagents import Agent, Context, Protocol, Model
 from uagents.setup import fund_agent_if_low
 import os
 import json
+import logging
 
 class EmergencyData(Model):
     category: str
@@ -11,17 +12,21 @@ class EmergencyProtocol(Protocol):
     def __init__(self):
         super().__init__("emergency_protocol")
         
-    async def process_emergency(self, ctx: Context, emergency_data: EmergencyData):
+    async def process_emergency(self, emergency_data: EmergencyData):
         """Process emergency data and communicate with dispatcher"""
         try:
             # Process the emergency data
-            ctx.logger.info(f"Processing emergency: {emergency_data}")
+            logging.info(f"Processing emergency: {emergency_data}")
             
-            # Send to dispatcher agent
-            await ctx.send(os.getenv("DISPATCHER_AGENT_ADDRESS"), emergency_data)
+            # Create a context for the dispatcher protocol
+            ctx = Context()
+            ctx.logger = logging.getLogger("dispatcher")
+            
+            # Send to dispatcher agent using the dispatcher protocol
+            await dispatcher_protocol.handle_emergency(ctx, emergency_data)
             
         except Exception as e:
-            ctx.logger.error(f"Error processing emergency: {e}")
+            logging.error(f"Error processing emergency: {e}")
 
 class DispatcherProtocol(Protocol):
     def __init__(self):

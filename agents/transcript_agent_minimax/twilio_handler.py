@@ -3,6 +3,7 @@ from twilio.twiml.voice_response import VoiceResponse, Gather
 import os
 import logging
 from dotenv import load_dotenv
+from .minimax_tts import MinimaxTTS
 
 # Load environment variables
 load_dotenv()
@@ -14,19 +15,24 @@ class TwilioHandler:
         self.auth_token = os.getenv('TWILIO_AUTH_TOKEN')
         self.phone_number = os.getenv('TWILIO_PHONE_NUMBER')
         self.client = Client(self.account_sid, self.auth_token)
+        self.tts = MinimaxTTS()  # Initialize Minimax TTS
         logging.info(f"TwilioHandler initialized with phone number: {self.phone_number}")
 
     def handle_incoming_call(self):
         """
-        Handle incoming 911 calls and integrate with Minimax
+        Handle incoming 911 calls using Minimax TTS
         """
         logging.info("Handling incoming call")
         try:
             response = VoiceResponse()
             
-            # Initial greeting
-            response.say("911, what's your emergency?", voice='alice')
-            logging.debug("Added initial greeting")
+            # Initial greeting using Minimax TTS
+            greeting_response = self.tts.generate_twiml_response(
+                "911, what's your emergency?",
+                voice_id="female_01",  # Using female voice for emergency services
+                speed=1.0
+            )
+            response.append(greeting_response)
             
             # Configure Gather with explicit speech settings
             gather = Gather(
@@ -41,8 +47,13 @@ class TwilioHandler:
                 speechModel='phone_call'
             )
             
-            # Add the prompt to the Gather
-            gather.say("Please describe your emergency.", voice='alice')
+            # Add the prompt using Minimax TTS
+            prompt_response = self.tts.generate_twiml_response(
+                "Please describe your emergency.",
+                voice_id="female_01",
+                speed=1.0
+            )
+            gather.append(prompt_response)
             
             # Add the Gather to the response
             response.append(gather)
@@ -51,7 +62,12 @@ class TwilioHandler:
             logging.info(f"Generated TwiML response: {str(response)}")
             
             # If no input received, this will only execute after Gather is done
-            response.say("We didn't receive any input. Please call back if you have an emergency.", voice='alice')
+            no_input_response = self.tts.generate_twiml_response(
+                "We didn't receive any input. Please call back if you have an emergency.",
+                voice_id="female_01",
+                speed=1.0
+            )
+            response.append(no_input_response)
             
             logging.info("Successfully created voice response")
             return str(response)
