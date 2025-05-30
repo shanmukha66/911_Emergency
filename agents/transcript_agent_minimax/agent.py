@@ -143,6 +143,7 @@ async def process_transcripts(ctx: Context):
         # Extract the response
         output = chat_completion.choices[0].message.content
         
+        logging.info(f"Output: {output}")
         # Process the output
         lines = output.splitlines()
         if len(lines) > 2:

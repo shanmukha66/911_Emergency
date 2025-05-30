@@ -117,11 +117,23 @@ def handle_transcription():
                 groq_analysis = loop.run_until_complete(emergency_processor.process_emergency_call(processed_data['transcript']))
                 logging.info(f"Groq Analysis completed: {groq_analysis}")
                 
+                # Create emergency data
+                emergency_data = {
+                    'category': groq_analysis.get('category', 'unknown'),
+                    'cases': [{
+                        'case_number': processed_data.get('CallSid', 'unknown'),
+                        'location': groq_analysis.get('location', 'unknown'),
+                        'description': groq_analysis.get('description', ''),
+                        'priority': groq_analysis.get('priority', 1),
+                        'status': 'open'
+                    }]
+                }
+                
                 # Process emergency with the Groq analysis
-                loop.run_until_complete(emergency_protocol.process_emergency(emergency_agent.context, {
-                    **processed_data,
-                    'ai_analysis': groq_analysis
-                }))
+                loop.run_until_complete(emergency_protocol.process_emergency(
+                    emergency_agent.context(),  # Create a new context
+                    emergency_data
+                ))
             finally:
                 loop.close()
         

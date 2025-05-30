@@ -1,4 +1,4 @@
-from groq import Groq
+import groq
 import os
 import logging
 from dotenv import load_dotenv
@@ -9,7 +9,7 @@ load_dotenv()
 
 class EmergencyProcessor:
     def __init__(self):
-        self.client = Groq(api_key=os.getenv('GROQ_API_KEY'))
+        self.client = groq.Groq(api_key=os.getenv('GROQ_API_KEY'))
         self.system_prompt = """You are an emergency call processing AI assistant. Your role is to:
 1. Analyze emergency call transcripts
 2. Categorize the emergency (medical, fire, police, etc.)

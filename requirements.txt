@@ -1,5 +1,12 @@
-flask==3.0.0
-twilio==8.10.0
+flask==3.0.3
+twilio==9.6.2
 python-dotenv==1.0.0
-groq==0.4.2
-asyncio==3.4.3
+groq==0.20.0
+protobuf==5.29.5
+uagents==0.22.5
+cosmpy==0.11.0
+streamlit==1.39.0
+requests==2.32.3
+pydantic==2.10.6
+python-socketio==5.12.1
+Flask-SocketIO==5.5.1
