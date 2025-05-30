@@ -28,19 +28,29 @@ class TwilioHandler:
             response.say("911, what's your emergency?", voice='alice')
             logging.debug("Added initial greeting")
             
-            # Gather the caller's response with transcription enabled
+            # Configure Gather with explicit speech settings
             gather = Gather(
-                input='speech',
-                timeout=3,
+                input='speech dtmf',
+                action='/voice/transcribe',
+                method='POST',
+                timeout=10,
                 language='en-US',
-                transcribe=True,
-                transcribeCallback='/voice/transcribe'
+                speechTimeout='auto',
+                enhanced=True,
+                hints='emergency, help, fire, medical, police',
+                speechModel='phone_call'
             )
-            gather.say("Please describe your emergency.", voice='alice')
-            response.append(gather)
-            logging.debug("Added gather instructions")
             
-            # If no input received
+            # Add the prompt to the Gather
+            gather.say("Please describe your emergency.", voice='alice')
+            
+            # Add the Gather to the response
+            response.append(gather)
+            
+            # Log the full TwiML for debugging
+            logging.info(f"Generated TwiML response: {str(response)}")
+            
+            # If no input received, this will only execute after Gather is done
             response.say("We didn't receive any input. Please call back if you have an emergency.", voice='alice')
             
             logging.info("Successfully created voice response")

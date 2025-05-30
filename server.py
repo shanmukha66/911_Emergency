@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from functools import wraps
 import threading
 import urllib.parse
+from agents.gpt_processor import EmergencyProcessor
 
 # Load environment variables
 load_dotenv()
@@ -20,6 +21,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 
 app = Flask(__name__)
 twilio_handler = TwilioHandler()
+emergency_processor = EmergencyProcessor()  # Initialize emergency processor
 
 # Twilio request validator
 validator = RequestValidator(os.getenv('TWILIO_AUTH_TOKEN'))
@@ -82,18 +84,55 @@ def handle_call():
 def handle_transcription():
     """Handle speech transcription results"""
     try:
-        speech_result = request.form
+        # Log all incoming data
+        logging.info("Received speech recognition data:")
+        logging.info("-" * 50)
+        for key, value in request.form.items():
+            logging.info(f"{key}: {value}")
+        logging.info("-" * 50)
+        
+        # Get the speech recognition results
+        speech_result = {
+            'SpeechResult': request.form.get('SpeechResult', request.form.get('Speech', '')),
+            'Confidence': request.form.get('Confidence', ''),
+            'CallSid': request.form.get('CallSid', ''),
+            'From': request.form.get('From', ''),
+        }
+        
+        # Log the processed speech result
+        logging.info("Processed speech recognition data:")
+        logging.info("-" * 50)
+        for key, value in speech_result.items():
+            logging.info(f"{key}: {value}")
+        logging.info("-" * 50)
+        
         processed_data = twilio_handler.process_speech(speech_result)
         
-        # Create a task to send data to emergency processing agent
-        async def send_to_agent():
-            await emergency_protocol.process_emergency(emergency_agent.context, processed_data)
+        # Process through Groq in a separate thread
+        def process_emergency_async():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                # Process transcript through Groq
+                groq_analysis = loop.run_until_complete(emergency_processor.process_emergency_call(processed_data['transcript']))
+                logging.info(f"Groq Analysis completed: {groq_analysis}")
+                
+                # Process emergency with the Groq analysis
+                loop.run_until_complete(emergency_protocol.process_emergency(emergency_agent.context, {
+                    **processed_data,
+                    'ai_analysis': groq_analysis
+                }))
+            finally:
+                loop.close()
         
-        # Run the async task in the background
-        asyncio.create_task(send_to_agent())
+        # Start processing in a background thread
+        thread = threading.Thread(target=process_emergency_async)
+        thread.daemon = True
+        thread.start()
         
         # Create a response that doesn't interrupt the ongoing call
         response = VoiceResponse()
+        response.say("Thank you, we have received your emergency information and are analyzing it now.", voice='alice')
         return str(response), 200
     except Exception as e:
         logging.error(f"Error processing transcription: {e}")

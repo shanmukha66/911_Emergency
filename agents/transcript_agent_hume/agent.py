@@ -3,6 +3,10 @@ This agent can request data from a website and send an alert to your wallet if a
 """
 
 from uagents import Agent, Context
+import requests
+import json
+import os
+import groq
 
 class Request(Model):
     message: str
@@ -88,10 +92,8 @@ async def process_transcripts(ctx: Context):
     transcripts = fetch_transcripts()
 
     # Your API key
-    OPENAI_API_KEY = ""
-
-    # API endpoint
-    url = "https://api.openai.com/v1/chat/completions"
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    client = groq.Client(api_key=GROQ_API_KEY)
 
     # System prompt
     system_prompt = """
@@ -109,47 +111,34 @@ async def process_transcripts(ctx: Context):
     # User prompt made from event transcripts
     user_prompt = f"The following are the three 911 call transcripts which you need to segregate: {transcripts}"
 
+    try:
+        # Call Groq API
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            model="mixtral-8x7b-32768",  # Using Mixtral model for better performance
+            temperature=0.5,
+            max_tokens=4000
+        )
+        
+        # Extract the response
+        response_content = chat_completion.choices[0].message.content
+        
+        # Process the output
+        lines = response_content.splitlines()
+        if len(lines) > 2:
+            truncated_lines = lines[1:-1]
+            output = "\n".join(truncated_lines)
+        
+        ctx.logger.info(output)
+        
+    except Exception as e:
+        ctx.logger.error(f"Error in processing transcripts: {e}")
+        print(f"Failed to get a response: {str(e)}")
 
-    # JSON payload to be sent to the API
-    payload = {
-        "model": "gpt-4o-mini",
-        "messages": [
-            {
-                "role": "system",
-                "content": system_prompt
-            },
-            {
-                "role": "user",
-                "content": user_prompt
-            }
-        ]
-    }
-
-    # Headers for the API request
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {OPENAI_API_KEY}"
-    }
-
-    # Send the request to the OpenAI API
-    response = requests.post(url, headers=headers, data=json.dumps(payload))
-
-    # Check if the response is successful
-    if response.status_code == 200:
-        # Parse the response
-        data = response.json()
-       
-        # Extract the actual response content from the 'choices' array
-        response_content = data['choices'][0]['message']['content']
-
-    else:
-        print(f"Failed to get a response: {response.status_code}")
-        print(response.text)
-
-    # Print the response from the API
-    output = data['choices'][0]['message']['content']
-    
-    ctx.logger.info(output)
+    ctx.logger.info("Processing complete")
 
 
 if __name__ == "__main__":
